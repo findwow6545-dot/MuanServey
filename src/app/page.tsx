@@ -439,7 +439,8 @@ export default function App() {
           </div>
         </div>
       </div>
-    );
+    </div>
+  );
 
   const renderSurveyForm = () => {
     // 각 카테고리의 제목과 취지 명시
