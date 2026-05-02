@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, collection, query, onSnapshot, doc, setDoc } from 'firebase/firestore';
+import { getFirestore, collection, query, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
 
 // --- Firebase 초기화 ---
 const firebaseConfig = {
@@ -37,7 +37,7 @@ const initialFormState = {
   respondentRelation: '', interviewerName: '', interviewerPhone: '',
   
   // 1. 일반현황
-  name: '', age: '', address: '', residenceYears: '',
+  name: '', age: '', addressVillage: '', addressDetail: '', address: '', residenceYears: '',
   housing: '', housingOther: '',
   householdType: '', householdFamilyCount: '', householdOther: '',
   monthlyExpense: '', avgExpenseAmount: '',
@@ -107,6 +107,8 @@ export default function App() {
   const [formData, setFormData] = useState<any>(initialFormState);
   const [currentStep, setCurrentStep] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   
   const [selectedFacilityCategory, setSelectedFacilityCategory] = useState('');
 
@@ -164,6 +166,36 @@ export default function App() {
       ...formData,
       [objName]: { ...formData[objName], [fieldName]: value }
     });
+  };
+
+  const handleAdminLogin = () => {
+    const id = prompt("관리자 아이디를 입력하세요.");
+    if (id !== 'admin') {
+      if (id) alert("아이디가 틀렸습니다.");
+      return;
+    }
+    const pw = prompt("관리자 비밀번호를 입력하세요.");
+    if (pw === '123456') {
+      setIsAdminLoggedIn(true);
+      alert("관리자로 로그인되었습니다.");
+    } else {
+      alert("비밀번호가 틀렸습니다.");
+    }
+  };
+
+  const editSurvey = (survey: any) => {
+    setFormData(survey);
+    setCurrentView('survey');
+  };
+
+  const deleteSurvey = async (id: string) => {
+    if (!confirm("정말 삭제하시겠습니까?")) return;
+    try {
+      await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'surveys', id));
+      alert("삭제되었습니다.");
+    } catch (error: any) {
+      alert("삭제 실패: " + error.message);
+    }
   };
 
   const startNewSurvey = () => {
@@ -248,7 +280,7 @@ export default function App() {
       s.visit2?.date, s.visit2?.ampm, s.visit2?.time, s.visit2?.result,
       s.visit3?.date, s.visit3?.ampm, s.visit3?.time, s.visit3?.result,
       s.respondentRelation, s.interviewerName, s.interviewerPhone,
-      s.name, s.age, s.address, s.residenceYears, s.housing, s.housingOther,
+      s.name, s.age, `${s.addressVillage || ''} ${s.addressDetail || ''}`.trim() || s.address, s.residenceYears, s.housing, s.housingOther,
       s.householdType, s.householdFamilyCount, s.householdOther, s.monthlyExpense, s.avgExpenseAmount,
       formatArray(s.maxExpenseItems), s.maxExpenseItemsOther, formatArray(s.incomeSources), s.incomeOther,
       s.healthStatus, s.diseaseStatus, s.diseaseDetail, s.pastDiseaseDetail, s.medicationStatus,
@@ -390,6 +422,7 @@ export default function App() {
         <header className="text-center space-y-2 mb-8">
           <h1 className="text-2xl md:text-4xl font-bold text-slate-800 tracking-tight">도원·내동항 주민 전수 조사</h1>
           <p className="text-slate-500 font-medium">어촌뉴딜3.0 현장 및 사후 데이터 입력 시스템 (클라우드 연동)</p>
+          <p className="text-sm text-slate-400 mt-2">조사기관: (주)선재, 국립목포대학교 조경학과 표현연구실</p>
           <div className="flex justify-center items-center mt-2 text-sm text-emerald-600 font-semibold">
             <Cloud size={16} className="mr-1" /> 클라우드 연동 됨
           </div>
@@ -422,23 +455,39 @@ export default function App() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mt-8">
-          <div className="p-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+          <div className="p-4 border-b border-slate-200 bg-slate-50 flex flex-col md:flex-row justify-between items-center gap-4">
             <h2 className="font-bold text-slate-700 flex items-center">
               <ClipboardList className="mr-2 text-slate-500" size={20}/> 실시간 조사 목록
             </h2>
+            <div className="flex gap-2 w-full md:w-auto">
+              <input type="text" placeholder="이름 검색" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="p-2 border rounded-lg text-sm flex-1 md:w-48" />
+              {!isAdminLoggedIn ? (
+                <button onClick={handleAdminLogin} className="text-xs bg-slate-200 text-slate-700 px-3 py-2 rounded-lg hover:bg-slate-300 whitespace-nowrap">관리자 로그인</button>
+              ) : (
+                <span className="text-xs bg-emerald-100 text-emerald-700 px-3 py-2 rounded-lg font-bold whitespace-nowrap flex items-center">관리자 모드</span>
+              )}
+            </div>
           </div>
           <div className="divide-y divide-slate-100 max-h-96 overflow-y-auto">
             {surveys.length === 0 ? (
               <div className="p-12 text-center text-slate-400">데이터가 없습니다.</div>
             ) : (
-              surveys.map((s, idx) => (
-                <div key={idx} className="p-4 flex justify-between items-center hover:bg-slate-50">
-                  <div>
-                    <p className="font-bold text-slate-800">{s.name || '미입력'} <span className="text-sm text-slate-500 font-normal">({s.address || '주소 미상'})</span></p>
+              surveys.filter(s => !searchTerm || s.name?.includes(searchTerm)).slice(0, 10).map((s, idx) => (
+                <div key={idx} className="p-4 flex flex-col md:flex-row justify-between items-center hover:bg-slate-50 gap-4">
+                  <div className="text-center md:text-left">
+                    <p className="font-bold text-slate-800">{s.name || '미입력'} <span className="text-sm text-slate-500 font-normal">({`${s.addressVillage || ''} ${s.addressDetail || ''}`.trim() || s.address || '주소 미상'})</span></p>
                     <p className="text-xs text-slate-400 mt-1">{new Date(s.createdAt).toLocaleString()} | 면접원: {s.interviewerName || '미상'}</p>
                   </div>
-                  <div className="text-emerald-500 flex items-center text-sm font-bold bg-emerald-50 px-3 py-1 rounded-full">
-                    <CheckCircle2 size={16} className="mr-1"/> 완료
+                  <div className="flex items-center gap-3">
+                    {isAdminLoggedIn && (
+                      <div className="flex gap-2">
+                        <button onClick={() => editSurvey(s)} className="text-xs text-blue-500 hover:text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-200">수정</button>
+                        <button onClick={() => deleteSurvey(s.id)} className="text-xs text-red-500 hover:text-red-700 bg-red-50 px-2 py-1 rounded border border-red-200">삭제</button>
+                      </div>
+                    )}
+                    <div className="text-emerald-500 flex items-center text-sm font-bold bg-emerald-50 px-3 py-1 rounded-full whitespace-nowrap">
+                      <CheckCircle2 size={16} className="mr-1"/> 완료
+                    </div>
                   </div>
                 </div>
               ))
@@ -576,10 +625,20 @@ export default function App() {
             {currentStep === 1 && (
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
-                  <div><label className="block text-sm font-bold mb-2">응답자 성명</label><input type="text" name="name" value={formData.name} onChange={handleInputChange} className="w-full p-3 border rounded-xl"/></div>
-                  <div><label className="block text-sm font-bold mb-2">연령 (만 세)</label><input type="number" name="age" value={formData.age} onChange={handleInputChange} className="w-full p-3 border rounded-xl"/></div>
-                  <div><label className="block text-sm font-bold mb-2">주소</label><input type="text" name="address" value={formData.address} onChange={handleInputChange} className="w-full p-3 border rounded-xl" placeholder="예: 성내리"/></div>
-                  <div><label className="block text-sm font-bold mb-2">마을거주기간 (년)</label><input type="number" name="residenceYears" value={formData.residenceYears} onChange={handleInputChange} className="w-full p-3 border rounded-xl"/></div>
+                  <div><label className="block text-sm font-bold mb-2">응답자 성명</label><input type="text" name="name" value={formData.name || ''} onChange={handleInputChange} className="w-full p-3 border rounded-xl"/></div>
+                  <div><label className="block text-sm font-bold mb-2">연령 (만 세)</label><input type="number" name="age" value={formData.age || ''} onChange={handleInputChange} className="w-full p-3 border rounded-xl"/></div>
+                  <div className="col-span-2 md:col-span-1">
+                    <label className="block text-sm font-bold mb-2">주소</label>
+                    <div className="flex gap-2">
+                      <select name="addressVillage" value={formData.addressVillage || ''} onChange={handleInputChange} className="w-1/2 p-3 border rounded-xl bg-white">
+                        <option value="">마을 선택</option>
+                        <option value="성내리(도원항)">성내리(도원항)</option>
+                        <option value="내리(내동항)">내리(내동항)</option>
+                      </select>
+                      <input type="text" name="addressDetail" value={formData.addressDetail || ''} onChange={handleInputChange} className="w-1/2 p-3 border rounded-xl" placeholder="상세주소"/>
+                    </div>
+                  </div>
+                  <div><label className="block text-sm font-bold mb-2">마을거주기간 (년)</label><input type="number" name="residenceYears" value={formData.residenceYears || ''} onChange={handleInputChange} className="w-full p-3 border rounded-xl"/></div>
                 </div>
 
                 <div>
