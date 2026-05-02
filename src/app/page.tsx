@@ -364,23 +364,23 @@ export default function App() {
   };
 
   // --- 생활서비스 시설 핸들러 ---
-  const toggleFacility = (facilityName, isChecked) => {
+  const toggleFacility = (category, facilityName, isChecked) => {
     if (isChecked) {
       setFormData({ 
         ...formData, 
-        lifeFacilities: [...formData.lifeFacilities, { category: selectedFacilityCategory, facilityName, location: '', transport: '' }] 
+        lifeFacilities: [...formData.lifeFacilities, { category, facilityName, location: '', transport: '' }] 
       });
     } else {
       setFormData({ 
         ...formData, 
-        lifeFacilities: formData.lifeFacilities.filter(f => !(f.category === selectedFacilityCategory && f.facilityName === facilityName)) 
+        lifeFacilities: formData.lifeFacilities.filter(f => !(f.category === category && f.facilityName === facilityName)) 
       });
     }
   };
 
-  const updateFacilityData = (facilityName, field, value) => {
+  const updateFacilityData = (category, facilityName, field, value) => {
     const updated = formData.lifeFacilities.map(f => {
-      if (f.category === selectedFacilityCategory && f.facilityName === facilityName) {
+      if (f.category === category && f.facilityName === facilityName) {
         return { ...f, [field]: value };
       }
       return f;
@@ -444,12 +444,14 @@ export default function App() {
     <div className="h-full overflow-y-auto w-full p-4 md:p-8">
       <div className="max-w-5xl mx-auto space-y-6">
         <header className="text-center space-y-2 mb-8">
-          <h1 className="text-2xl md:text-4xl font-bold text-slate-800 tracking-tight">도원·내동항 주민 전수 조사</h1>
-          <p className="text-slate-500 font-medium">어촌뉴딜3.0 현장 및 사후 데이터 입력 시스템 (클라우드 연동)</p>
-          <div className="flex flex-col md:flex-row justify-center items-center gap-2 md:gap-4 text-sm text-slate-500 mt-2 font-medium">
-            <p><strong>주관:</strong> 해양수산부, 무안군, 한국농어촌공사</p>
-            <p className="hidden md:block text-slate-300">|</p>
-            <p><strong>조사:</strong> (주)선재, 국립목포대학교 조경학과 표현연구실</p>
+          <h1 className="text-2xl md:text-4xl font-bold text-blue-900 tracking-tight">무안군 도원·내동항 서비스 수요 및 자원활용 조사</h1>
+          <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mt-6">
+            <div className="bg-white px-5 py-2.5 rounded-full shadow-sm border border-slate-100 text-sm font-medium text-slate-700">
+              <span className="font-bold text-blue-800 mr-2">[주관]</span> 해양수산부, 무안군, 한국농어촌공사 전남지역본부
+            </div>
+            <div className="bg-white px-5 py-2.5 rounded-full shadow-sm border border-slate-100 text-sm font-medium text-slate-700">
+              <span className="font-bold text-blue-800 mr-2">[조사기관]</span> ㈜선재, 국립목포대 조경학과 표현연구실
+            </div>
           </div>
           <div className="max-w-3xl mx-auto mt-4 p-4 bg-slate-50 rounded-xl border border-slate-200 text-sm text-slate-600 text-center leading-relaxed">
             본 조사는 어촌뉴딜3.0 사업의 일환으로 도원·내동항 주민들의 생활 실태와 불편사항, 향후 바램 등을 파악하여 실효성 있는 사업 계획 수립의 기초 자료로 활용하고자 실시됩니다.
@@ -894,75 +896,59 @@ export default function App() {
                   <div>평소 이용하는 생활서비스 시설의 <strong>구분</strong>을 선택하면 하단에 시설명 목록이 표시됩니다. 시설을 <strong>체크</strong>하여 위치와 이동수단을 입력해주세요.</div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-bold text-slate-800 mb-2">시설 구분 선택</label>
-                  <select 
-                    value={selectedFacilityCategory} 
-                    onChange={(e) => setSelectedFacilityCategory(e.target.value)} 
-                    className="w-full p-3 border-2 border-slate-300 rounded-xl bg-white text-base font-bold focus:ring-2 focus:ring-blue-500 outline-none"
-                  >
-                    <option value="">▼ 구분을 선택하세요 (의료, 돌봄, 교육 등)</option>
-                    {Object.keys(facilityCategories).map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
-                </div>
+                <div className="space-y-6">
+                  {Object.keys(facilityCategories).map(cat => (
+                    <div key={cat} className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                      <h3 className="font-bold text-md text-slate-800 mb-3 flex items-center">
+                        <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm mr-2">{cat}</span>
+                        시설 목록
+                      </h3>
+                      
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                        {facilityCategories[cat].map(facName => {
+                          const facilityData = formData.lifeFacilities.find(f => f.category === cat && f.facilityName === facName);
+                          const isChecked = !!facilityData;
 
-                {selectedFacilityCategory && (
-                  <div className="bg-slate-50 p-5 rounded-2xl border-2 border-slate-200">
-                    <h3 className="font-bold text-lg text-slate-800 mb-4 border-b pb-2">
-                      [{selectedFacilityCategory}] 시설 목록
-                    </h3>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {facilityCategories[selectedFacilityCategory].map(facName => {
-                        const facilityData = formData.lifeFacilities.find(f => f.category === selectedFacilityCategory && f.facilityName === facName);
-                        const isChecked = !!facilityData;
+                          return (
+                            <div key={facName} className={`p-2 border rounded-lg transition-all ${isChecked ? 'bg-blue-50 border-blue-300 shadow-sm' : 'bg-white border-slate-200 hover:border-blue-300'}`}>
+                              <label className="flex items-start cursor-pointer w-full">
+                                <input 
+                                  type="checkbox" 
+                                  checked={isChecked} 
+                                  onChange={(e) => toggleFacility(cat, facName, e.target.checked)} 
+                                  className="mt-1 mr-2 w-4 h-4 text-blue-600 rounded flex-shrink-0"
+                                />
+                                <span className={`text-sm font-bold leading-tight ${isChecked ? 'text-blue-800' : 'text-slate-700'}`}>{facName}</span>
+                              </label>
 
-                        return (
-                          <div key={facName} className={`p-4 border rounded-xl transition-all ${isChecked ? 'bg-blue-50 border-blue-500 shadow-sm' : 'bg-white border-slate-200'}`}>
-                            <label className="flex items-center cursor-pointer w-full">
-                              <input 
-                                type="checkbox" 
-                                checked={isChecked} 
-                                onChange={(e) => toggleFacility(facName, e.target.checked)} 
-                                className="w-5 h-5 text-blue-600 rounded flex-shrink-0 mr-3"
-                              />
-                              <span className={`font-bold ${isChecked ? 'text-blue-800' : 'text-slate-700'}`}>{facName}</span>
-                            </label>
-
-                            {isChecked && (
-                              <div className="mt-4 space-y-3 pl-8 border-l-2 border-blue-200 animate-in fade-in slide-in-from-top-2">
-                                <div>
-                                  <label className="text-xs font-bold text-slate-500 mb-1 block">위치 (시설명/주소)</label>
+                              {isChecked && (
+                                <div className="mt-2 space-y-2 animate-in fade-in slide-in-from-top-2">
                                   <input 
                                     type="text" 
-                                    placeholder="상세 위치 입력" 
+                                    placeholder="시설명/주소" 
                                     value={facilityData.location} 
-                                    onChange={(e) => updateFacilityData(facName, 'location', e.target.value)} 
-                                    className="w-full p-2 border rounded-lg text-sm bg-white"
+                                    onChange={(e) => updateFacilityData(cat, facName, 'location', e.target.value)} 
+                                    className="w-full p-1.5 border rounded text-xs bg-white focus:ring-1 focus:ring-blue-500 outline-none"
                                   />
-                                </div>
-                                <div>
-                                  <label className="text-xs font-bold text-slate-500 mb-1 block">이동 수단</label>
                                   <select 
                                     value={facilityData.transport} 
-                                    onChange={(e) => updateFacilityData(facName, 'transport', e.target.value)} 
-                                    className="w-full p-2 border rounded-lg text-sm bg-white"
+                                    onChange={(e) => updateFacilityData(cat, facName, 'transport', e.target.value)} 
+                                    className="w-full p-1.5 border rounded text-xs bg-white focus:ring-1 focus:ring-blue-500 outline-none"
                                   >
-                                    <option value="">수단 선택</option>
+                                    <option value="">이동 수단</option>
                                     <option>도보</option><option>자가용</option><option>버스</option><option>택시</option>
                                     <option>수요응답형 택시</option><option>지인차량</option><option>오토바이</option>
+                                    <option>자전거</option><option>기타</option>
                                   </select>
                                 </div>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  ))}
+                </div>
                 
                 {formData.lifeFacilities.length > 0 && (
                   <div className="mt-8">
