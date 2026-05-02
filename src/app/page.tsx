@@ -643,7 +643,8 @@ export default function App() {
                       </select>
                     </div>
                   ))}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4">
+                    <div><label className="block text-sm font-bold mb-2">응답자 성명</label><input type="text" name="name" value={formData.name || ''} onChange={handleInputChange} className="w-full p-3 border rounded-xl"/></div>
                     <div><label className="block text-sm font-bold mb-2">응답자 세대주관계</label><input type="text" name="respondentRelation" value={formData.respondentRelation} onChange={handleInputChange} className="w-full p-3 border rounded-xl"/></div>
                     <div><label className="block text-sm font-bold mb-2">면접원 성명</label><input type="text" name="interviewerName" value={formData.interviewerName} onChange={handleInputChange} className="w-full p-3 border rounded-xl"/></div>
                     <div><label className="block text-sm font-bold mb-2">면접원 연락처</label><input type="tel" name="interviewerPhone" value={formData.interviewerPhone} onChange={handleInputChange} className="w-full p-3 border rounded-xl"/></div>
