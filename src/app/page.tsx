@@ -53,8 +53,8 @@ const initialFormState = {
   dailyMorning: '', dailyAfternoon: '',
 
   // 2. 가족
-  residentFamilies: [], 
-  nonResidentFamilies: [],
+  residentFamilies: [{ relation: '', age: '', health: '', disease: '', disability: '', note: '' }], 
+  nonResidentFamilies: [{ relation: '', age: '', residence: '', contact: '', note: '' }],
 
   // 3. 사회복지 서비스
   welfareSatisfaction: '',
@@ -219,7 +219,7 @@ export default function App() {
     setIsSaving(false);
   };
 
-  const downloadCSV = () => {
+  const downloadCSV = async () => {
     try {
       if (surveys.length === 0) {
         alert("다운로드할 데이터가 없습니다.");
@@ -304,15 +304,39 @@ export default function App() {
     // 3. Blob을 이용한 안전한 파일 생성 및 다운로드 (대용량 지원)
     const csvContent = "\uFEFF" + headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
+    const defaultFileName = `무안_도원내동항_주민전수조사_전체결과_${new Date().toISOString().split('T')[0]}.csv`;
     
+    // File System Access API 지원 시 사용 (저장 폴더 지정)
+    if (window.showSaveFilePicker) {
+      try {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: defaultFileName,
+          types: [{
+            description: 'CSV File',
+            accept: { 'text/csv': ['.csv'] },
+          }],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        alert("엑셀 파일이 지정하신 폴더에 성공적으로 저장되었습니다.");
+        return;
+      } catch (err: any) {
+        if (err.name === 'AbortError') return; // 취소한 경우
+        console.error("SaveFilePicker Error:", err);
+        // 오류 발생 시 기존 방식으로 폴백
+      }
+    }
+
+    // 기존 방식 폴백 (브라우저 기본 다운로드 폴더)
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `무안_도원내동항_주민전수조사_전체결과_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute("download", defaultFileName);
     document.body.appendChild(link);
     link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url); // 메모리 해제
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url); // 메모리 해제
     } catch (e) {
       console.error("CSV Download Error:", e);
       alert("다운로드 중 오류가 발생했습니다: " + e.message);
@@ -422,8 +446,15 @@ export default function App() {
         <header className="text-center space-y-2 mb-8">
           <h1 className="text-2xl md:text-4xl font-bold text-slate-800 tracking-tight">도원·내동항 주민 전수 조사</h1>
           <p className="text-slate-500 font-medium">어촌뉴딜3.0 현장 및 사후 데이터 입력 시스템 (클라우드 연동)</p>
-          <p className="text-sm text-slate-400 mt-2">조사기관: (주)선재, 국립목포대학교 조경학과 표현연구실</p>
-          <div className="flex justify-center items-center mt-2 text-sm text-emerald-600 font-semibold">
+          <div className="flex flex-col md:flex-row justify-center items-center gap-2 md:gap-4 text-sm text-slate-500 mt-2 font-medium">
+            <p><strong>주관:</strong> 해양수산부, 무안군, 한국농어촌공사</p>
+            <p className="hidden md:block text-slate-300">|</p>
+            <p><strong>조사:</strong> (주)선재, 국립목포대학교 조경학과 표현연구실</p>
+          </div>
+          <div className="max-w-3xl mx-auto mt-4 p-4 bg-slate-50 rounded-xl border border-slate-200 text-sm text-slate-600 text-center leading-relaxed">
+            본 조사는 어촌뉴딜3.0 사업의 일환으로 도원·내동항 주민들의 생활 실태와 불편사항, 향후 바램 등을 파악하여 실효성 있는 사업 계획 수립의 기초 자료로 활용하고자 실시됩니다.
+          </div>
+          <div className="flex justify-center items-center mt-4 text-sm text-emerald-600 font-semibold">
             <Cloud size={16} className="mr-1" /> 클라우드 연동 됨
           </div>
         </header>
