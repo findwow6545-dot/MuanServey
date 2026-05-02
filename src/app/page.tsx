@@ -101,10 +101,10 @@ const facilityCategories = {
 };
 
 export default function App() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<any>(null);
   const [currentView, setCurrentView] = useState('dashboard');
-  const [surveys, setSurveys] = useState([]);
-  const [formData, setFormData] = useState(initialFormState);
+  const [surveys, setSurveys] = useState<any[]>([]);
+  const [formData, setFormData] = useState<any>(initialFormState);
   const [currentStep, setCurrentStep] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   
@@ -133,6 +133,7 @@ export default function App() {
       setSurveys(data);
     }, (error) => {
       console.error("Firestore error:", error);
+      alert("데이터를 불러오는 데 실패했습니다: " + error.message);
     });
     return () => unsubscribe();
   }, [user]);
@@ -177,6 +178,7 @@ export default function App() {
     setIsSaving(true);
     try {
       await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'surveys', formData.id), formData);
+      alert('수고하셨습니다. 정상적으로 저장되었습니다.');
       setCurrentView('dashboard');
     } catch (error) {
       console.error("Save error:", error);
@@ -186,10 +188,11 @@ export default function App() {
   };
 
   const downloadCSV = () => {
-    if (surveys.length === 0) {
-      alert("다운로드할 데이터가 없습니다.");
-      return;
-    }
+    try {
+      if (surveys.length === 0) {
+        alert("다운로드할 데이터가 없습니다.");
+        return;
+      }
 
     // 1. 전체 문항 헤더 정의 (약 90여 개 항목)
     const headers = [
@@ -276,8 +279,12 @@ export default function App() {
     link.setAttribute("download", `무안_도원내동항_주민전수조사_전체결과_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url); // 메모리 해제
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url); // 메모리 해제
+    } catch (e) {
+      console.error("CSV Download Error:", e);
+      alert("다운로드 중 오류가 발생했습니다: " + e.message);
+    }
   };
 
   // --- 가족 관련 핸들러 ---
